@@ -31,6 +31,7 @@ const {
 } = require('./updateChannels.cjs');
 const { resolveCacheLimit, selectEvictions } = require('./audioCachePrune.cjs');
 const { createAnalysisHost } = require('./analysis/host.cjs');
+const { createLlmHost } = require('./llm/host.cjs');
 const { createDebugHost, runtimeLine } = require('./debug/debugHost.cjs');
 const { createCrashLog, installCrashHandlers } = require('./debug/crashLog.cjs');
 const { createModelStore } = require('./analysis/modelStore.cjs');
@@ -2009,6 +2010,11 @@ const displaySleepBlocker = createDisplaySleepBlocker(powerSaveBlocker);
 createDebugHost({ app, ipcMain, store, BrowserWindow });
 
 const analysisHost = createAnalysisHost({ app, ipcMain, getModelsDirs: getModelsDirectories });
+
+// The local-LLM worker (node-llama-cpp), used when AI_PROVIDER is 'local' for theme generation and
+// lyric segmentation. Registers choose-local-llm-model / test-local-llm; the provider dispatch
+// itself lives in aiTextClient.cjs.
+createLlmHost({ app, ipcMain, dialog, store, isTrustedSender: isTrustedMainWindowContents });
 
 function buildPlaybackSyncBridgeStatus() {
   return {
@@ -6632,6 +6638,29 @@ ipcMain.handle('generate-theme', async (event, lyricsText, options = {}) => {
 
       dualTheme.light.provider = 'OpenAI Compatible (Local)';
       dualTheme.dark.provider = 'OpenAI Compatible (Local)';
+
+    } else if (provider === 'local') {
+      const systemPrompt = buildThemeSystemPrompt(true);
+      const sourcePrompt = buildThemeSourcePrompt(snippet, isPureMusic, songTitle);
+      const content = await runAiJsonCompletion({
+        store,
+        systemPrompt,
+        sourcePrompt,
+        schema: THEME_JSON_SCHEMA,
+        schemaName: THEME_JSON_SCHEMA_NAME,
+        maxTokens: THEME_MAX_OUTPUT_TOKENS,
+      });
+
+      // Grammar-constrained output cannot be fenced, but the strip is kept so a user swapping this
+      // branch's schema off never gets a raw ```json string past the sanitizer.
+      let jsonStr = content.trim();
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
+      }
+      dualTheme = sanitizeGeneratedDualTheme(JSON.parse(jsonStr));
+
+      dualTheme.light.provider = '本地模型 (node-llama-cpp)';
+      dualTheme.dark.provider = '本地模型 (node-llama-cpp)';
 
     } else {
       const apiKey = store.get('GEMINI_API_KEY');

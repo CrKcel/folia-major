@@ -459,6 +459,22 @@ async function runGeminiCompletion({ store, systemPrompt, sourcePrompt, response
 async function runAiJsonCompletion({ store, systemPrompt, sourcePrompt, schema, schemaName, geminiResponseSchema, geminiGenerationConfig, customFetch, timeoutMs, maxTokens, disableReasoning }) {
   const provider = store.get('AI_PROVIDER') || 'gemini';
 
+  // Local node-llama-cpp worker. Required lazily so a session that never selects the local provider
+  // never touches the native module chain. Its deadlines and retries live in the host, not here;
+  // `disableReasoning` is a cloud-API concept and is ignored locally (prefer instruct models).
+  if (provider === 'local') {
+    const { runLocalJsonCompletion } = require('./llm/host.cjs');
+    return runLocalJsonCompletion({
+      store,
+      systemPrompt,
+      sourcePrompt,
+      schema,
+      schemaName,
+      maxTokens,
+      temperature: resolveOpenAICompatibleTemperature(store.get('OPENAI_API_TEMPERATURE')),
+    });
+  }
+
   return provider === 'openai'
     ? runOpenAICompatibleCompletion({ store, systemPrompt, sourcePrompt, schema, schemaName, customFetch, timeoutMs, maxTokens, disableReasoning })
     : runGeminiCompletion({ store, systemPrompt, sourcePrompt, responseSchema: geminiResponseSchema, generationConfig: geminiGenerationConfig, customFetch, timeoutMs, maxTokens });

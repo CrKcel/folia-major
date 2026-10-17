@@ -85,7 +85,9 @@
       "shared/**/*",
       "package.json",
       "build/miao.png",
-      "build/thumbar/*.png"
+      "build/thumbar/*.png",
+      "!node_modules/node-llama-cpp/**",
+      "!node_modules/@node-llama-cpp/**"
     ],
     "asarUnpack": [
       "electron/analysis/htdemucs_runner.py",
@@ -210,6 +212,7 @@
     "koffi": "^3.3.1",
     "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/refs/tags/v1.6.0.tar.gz",
     "music-metadata": "^11.16.1",
+    "node-llama-cpp": "^3.22.1",
     "onnxruntime-node": "^1.30.0",
     "ws": "^8.21.3"
   },

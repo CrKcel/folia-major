@@ -463,6 +463,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         OPENAI_API_MODEL: '',
         OPENAI_API_TEMPERATURE: DEFAULT_OPENAI_TEMPERATURE,
         AI_PROVIDER: 'gemini',
+        LOCAL_LLM_MODEL_PATH: '',
         USE_SYSTEM_PROXY_FOR_AI: false,
         ENABLE_UPDATE_CHECK: true,
         ENABLE_AUTO_UPDATE: false,
@@ -475,6 +476,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         AI_PROVIDER: 'gemini',
         GEMINI_API_KEY: '',
         OPENAI_API_KEY: '',
+        LOCAL_LLM_MODEL_PATH: '',
     });
     const [electronSaveStatus, setElectronSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [updateStatus, setUpdateStatus] = useState<ElectronUpdateStatus | null>(null);
@@ -484,16 +486,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     const [cacheDirectoryStatus, setCacheDirectoryStatus] = useState<'idle' | 'choosing'>('idle');
     const [stageActionStatus, setStageActionStatus] = useState<'idle' | 'regenerating'>('idle');
     const configuredAiProvider = isElectron ? electronSettings.AI_PROVIDER : getWebAiProvider();
-    const aiServiceLabel = configuredAiProvider === 'openai' ? t('options.otherCompatibleApi') : 'Google Gemini';
+    const aiServiceLabel = configuredAiProvider === 'openai'
+        ? t('options.otherCompatibleApi')
+        : configuredAiProvider === 'local'
+            ? t('options.localLlmProvider')
+            : 'Google Gemini';
     const isElectronRuntime = typeof window !== 'undefined' && Boolean(window.electron);
-    const savedAiApiKey = savedElectronAiCredentials.AI_PROVIDER === 'openai'
-        ? savedElectronAiCredentials.OPENAI_API_KEY
-        : savedElectronAiCredentials.GEMINI_API_KEY;
+    // The local provider's "credential" is the .gguf path on disk, so the configured/missing badge
+    // judges that instead of an API key.
+    const savedAiCredential = savedElectronAiCredentials.AI_PROVIDER === 'local'
+        ? savedElectronAiCredentials.LOCAL_LLM_MODEL_PATH
+        : savedElectronAiCredentials.AI_PROVIDER === 'openai'
+            ? savedElectronAiCredentials.OPENAI_API_KEY
+            : savedElectronAiCredentials.GEMINI_API_KEY;
     const aiApiKeyStatus: 'loading' | 'configured' | 'missing' = !isElectronRuntime
         ? 'configured'
         : !electronSettingsLoaded
             ? 'loading'
-            : savedAiApiKey.trim()
+            : savedAiCredential.trim()
                 ? 'configured'
                 : 'missing';
     const showQuarkDownload = electronSettings.UPDATE_CHANNEL === 'realeco';
@@ -515,9 +525,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         OPENAI_API_TEMPERATURE: String(settings.OPENAI_API_TEMPERATURE ?? '').trim() || DEFAULT_OPENAI_TEMPERATURE,
                     }));
                     setSavedElectronAiCredentials({
-                        AI_PROVIDER: settings.AI_PROVIDER === 'openai' ? 'openai' : 'gemini',
+                        AI_PROVIDER: settings.AI_PROVIDER === 'openai' || settings.AI_PROVIDER === 'local'
+                            ? settings.AI_PROVIDER
+                            : 'gemini',
                         GEMINI_API_KEY: String(settings.GEMINI_API_KEY ?? ''),
                         OPENAI_API_KEY: String(settings.OPENAI_API_KEY ?? ''),
+                        LOCAL_LLM_MODEL_PATH: String(settings.LOCAL_LLM_MODEL_PATH ?? ''),
                     });
                 }
             }).finally(() => setElectronSettingsLoaded(true));
@@ -630,15 +643,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             await (window as any).electron.saveSettings('OPENAI_API_MODEL', electronSettings.OPENAI_API_MODEL);
             await (window as any).electron.saveSettings('OPENAI_API_TEMPERATURE', temperature);
             await (window as any).electron.saveSettings('AI_PROVIDER', electronSettings.AI_PROVIDER);
+            await (window as any).electron.saveSettings('LOCAL_LLM_MODEL_PATH', electronSettings.LOCAL_LLM_MODEL_PATH);
             await (window as any).electron.saveSettings('USE_SYSTEM_PROXY_FOR_AI', electronSettings.USE_SYSTEM_PROXY_FOR_AI);
             await (window as any).electron.saveSettings('ENABLE_UPDATE_CHECK', electronSettings.ENABLE_UPDATE_CHECK);
             await (window as any).electron.saveSettings('ENABLE_AUTO_UPDATE', electronSettings.ENABLE_AUTO_UPDATE);
             await (window as any).electron.saveSettings('UPDATE_CHANNEL', electronSettings.UPDATE_CHANNEL);
             await (window as any).electron.saveSettings('DISCORD_RICH_PRESENCE_ENABLED', electronSettings.DISCORD_RICH_PRESENCE_ENABLED);
             setSavedElectronAiCredentials({
-                AI_PROVIDER: electronSettings.AI_PROVIDER === 'openai' ? 'openai' : 'gemini',
+                AI_PROVIDER: electronSettings.AI_PROVIDER === 'openai' || electronSettings.AI_PROVIDER === 'local'
+                    ? electronSettings.AI_PROVIDER
+                    : 'gemini',
                 GEMINI_API_KEY: electronSettings.GEMINI_API_KEY,
                 OPENAI_API_KEY: electronSettings.OPENAI_API_KEY,
+                LOCAL_LLM_MODEL_PATH: electronSettings.LOCAL_LLM_MODEL_PATH,
             });
             setElectronSaveStatus('saved');
             setTimeout(() => setElectronSaveStatus('idle'), 2000);

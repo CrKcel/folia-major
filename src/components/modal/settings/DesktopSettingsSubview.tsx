@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { Theme } from '../../../types';
 import { CustomSelect } from '../../shared/CustomSelect';
+import LocalLlmSettingsFields from './LocalLlmSettingsFields';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
 import SettingsSectionHeading from './navigation/SettingsSectionHeading';
 import SettingsRow, { SettingsToggle } from './SettingsRow';
@@ -32,6 +33,7 @@ type ElectronSettingsState = {
     OPENAI_API_MODEL: string;
     OPENAI_API_TEMPERATURE: string;
     AI_PROVIDER: string;
+    LOCAL_LLM_MODEL_PATH: string;
     USE_SYSTEM_PROXY_FOR_AI: boolean;
     ENABLE_UPDATE_CHECK: boolean;
     ENABLE_AUTO_UPDATE: boolean;
@@ -186,10 +188,9 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
         </label>
     );
 
-    const renderProviderOption = (provider: 'gemini' | 'openai', label: React.ReactNode) => {
-        const selected = provider === 'openai'
-            ? electronSettings.AI_PROVIDER === 'openai'
-            : electronSettings.AI_PROVIDER !== 'openai';
+    const renderProviderOption = (provider: 'gemini' | 'openai' | 'local', label: React.ReactNode) => {
+        const selected = electronSettings.AI_PROVIDER === provider
+            || (provider === 'gemini' && electronSettings.AI_PROVIDER !== 'openai' && electronSettings.AI_PROVIDER !== 'local');
         return (
             <button
                 type="button"
@@ -521,11 +522,19 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                         <div className={`flex rounded-xl border p-1 shrink-0 ${isDaylight ? 'bg-black/[0.05] border-black/10' : 'bg-white/5 border-white/5'}`}>
                             {renderProviderOption('gemini', 'Google Gemini')}
                             {renderProviderOption('openai', t('options.otherCompatibleApi'))}
+                            {renderProviderOption('local', t('options.localLlmProvider'))}
                         </div>
                     </div>
 
                     <div className={`p-4 space-y-3 border-b ${rowDividerClass}`}>
-                        {electronSettings.AI_PROVIDER !== 'openai' ? (
+                        {electronSettings.AI_PROVIDER === 'local' ? (
+                            <LocalLlmSettingsFields
+                                modelPath={electronSettings.LOCAL_LLM_MODEL_PATH || ''}
+                                onModelPathChange={(path) => setElectronSettings({ ...electronSettings, LOCAL_LLM_MODEL_PATH: path })}
+                                fieldClass={fieldClass}
+                                isDaylight={isDaylight}
+                            />
+                        ) : electronSettings.AI_PROVIDER !== 'openai' ? (
                             renderField(
                                 t('options.geminiApiKey') || 'Gemini API Key',
                                 <input
@@ -600,9 +609,11 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
 
                     <div className="flex items-center justify-between gap-4 p-4">
                         <span className="text-[10px] opacity-45 leading-relaxed max-w-[280px] text-left" style={{ color: 'var(--text-secondary)' }}>
-                            {electronSettings.AI_PROVIDER !== 'openai'
-                                ? (t('options.geminiApiKeyDesc') || 'Netease API backend runs locally.')
-                                : t('options.openaiApiUrlDesc')}
+                            {electronSettings.AI_PROVIDER === 'local'
+                                ? (t('options.localLlmProviderDesc') || '推理完全离线在本机运行，不发送任何数据。')
+                                : electronSettings.AI_PROVIDER !== 'openai'
+                                    ? (t('options.geminiApiKeyDesc') || 'Netease API backend runs locally.')
+                                    : t('options.openaiApiUrlDesc')}
                         </span>
                         <button
                             type="button"

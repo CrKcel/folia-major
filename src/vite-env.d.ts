@@ -744,6 +744,16 @@ declare global {
       generateTheme: (lyricsText: string, options?: { isPureMusic?: boolean; songTitle?: string }) => Promise<any>;
       /** Word-segments lyric lines with the user's configured model. Resolves to one boundary array per line. */
       segmentLyrics: (lines: string[]) => Promise<string[][]>;
+      /**
+       * Local-LLM (node-llama-cpp) support, desktop build only.
+       *
+       * `chooseLocalLlmModel` opens a native .gguf picker and returns the picked path without
+       * applying it - the caller stores it through the normal settings save path.
+       * `testLocalLlm` loads the configured model and answers one short prompt, rejecting with the
+       * worker's error text when that fails.
+       */
+      chooseLocalLlmModel?: () => Promise<{ canceled: boolean; path?: string }>;
+      testLocalLlm?: () => Promise<{ latencyMs: number }>;
       fetchLyricProxy: (
         url: string,
         init?: {

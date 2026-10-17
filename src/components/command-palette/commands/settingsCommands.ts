@@ -251,6 +251,7 @@ export const settingsCommands: CommandPaletteCommand[] = [
         { isAvailable: context => context?.settings.canAutoScanLocalLibrary() ?? true },
     ),
     createSettingsCommand('settings-desktop', 'Desktop settings', 'Open desktop app settings', ['desktop', 'electron', '桌面', '桌面端'], 'options', 'desktop', { platform: ['electron'] }),
+    createSettingsCommand('settings-ai-provider', 'AI theme provider', 'Choose where AI theme generation runs: cloud API or local model', ['ai', 'provider', 'gemini', 'openai', 'local llm', 'gguf', 'node-llama-cpp', '本地模型', '离线模型', '主题生成'], 'options', 'desktop', { platform: ['electron'] }),
     createSettingsCommand('settings-update-channel', 'Update channel', 'Choose the desktop app release channel', ['release channel', 'realeco', 'limo', 'cielo', '更新通道', '发布通道'], 'options', 'desktop', { platform: ['electron'] }),
     {
         id: 'desktop-toggle-voice-input-pause',
